@@ -41,8 +41,9 @@ app.get(['/projects', '/projects.jade'], (req, res) => {
 app.get(['/categories', '/categories.jade'], (req, res) => {
   if(req.query.projectId){
     res.render('categories', {projectId: req.query.projectId});
+  } else {
+    res.send("error");
   }
-  res.send("error");
   // TODO: fix error message
 });
 
@@ -50,8 +51,9 @@ app.get(['/categories', '/categories.jade'], (req, res) => {
 app.get(['/hoq', '/hoq.jade'], (req, res) => {
   if(req.query.categoryId){
     res.render('HoQ', {categoryId: req.query.categoryId});
+  } else {
+    res.send("error");
   }
-  res.send("error");
   // TODO: fix error message
 });
 
@@ -60,6 +62,110 @@ app.get(['/hoq', '/hoq.jade'], (req, res) => {
 //   console.log(req.query.id);
 //   res.render('HoQ', {hoqId: req.query.id});
 // });
+
+// read
+app.get('/api/tech-specifications', (req, res) => {
+  let jsonFile = __dirname + '/server-data/tech-specifications.json';
+  if(req.query.categoryId){
+    fs.readFile(jsonFile, (err, data) => {
+      if (err) {
+        res.sendStatus(500);
+        return;
+      }
+      let specifications = JSON.parse(data);
+      var ans = new Array();
+      for(var i = 0; i < specifications.length; i++){
+        if(specifications[i].categoryId == req.query.categoryId){
+          ans.push(specifications[i]);
+        }
+      }
+      res.json(ans);
+    });
+  } else {
+    res.send("error");
+  }
+});
+
+// create
+app.post('/api/tech-specifications', (req, res) => {
+  let jsonFile = __dirname + '/server-data/tech-specifications.json';
+  let newSpecification = req.body;
+  console.log('Adding new technical specification');
+  fs.readFile(jsonFile, (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+      return;
+    }
+    let specifications = JSON.parse(data);
+    specifications.push(newSpecification);
+    let specificationsJson = JSON.stringify(specifications, null, 2);
+    fs.writeFile(jsonFile, specificationsJson, err => {
+      if (err) {
+        res.sendStatus(500);
+        return;
+      }
+      // You could also respond with the database json to save a round trip
+      res.sendStatus(200);
+    });
+  });
+});
+
+// update
+app.put('/api/tech-specifications', (req, res) => {
+  let jsonFile = __dirname + '/server-data/tech-specifications.json';
+  let updateSpecification = req.body;
+  console.log('Changing technical specification');
+  fs.readFile(jsonFile, (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+      return;
+    }
+    let specifications = JSON.parse(data);
+    for(var i = 0; i < specifications.length; i++){
+      if(specifications[i].id == updateSpecification.id){
+        specifications[i].name = updateSpecification.name;
+        specifications[i].requirements = updateSpecification.requirements;
+        specifications[i].specifications = updateSpecification.specifications;
+        console.log(specifications[i]);
+        // TODO: MORE DATA
+      }
+    }
+    let specificationsJson = JSON.stringify(specifications, null, 2);
+    fs.writeFile(jsonFile, specificationsJson, err => {
+      if (err) {
+        res.sendStatus(500);
+        return;
+      }
+      // You could also respond with the database json to save a round trip
+      res.sendStatus(200);
+    });
+  });
+});
+
+// delete
+app.delete('/api/tech-specifications', (req, res) => {
+  let jsonFile = __dirname + '/server-data/tech-specifications.json';
+  let deleteSpecification = req.body;
+  console.log('Deleting new tech. specification');
+  fs.readFile(jsonFile, (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+      return;
+    }
+    let specifications = JSON.parse(data);
+    let index = specifications.findIndex(specification => specification.id == deleteSpecification.id);
+    specifications.splice(index, 1);
+    let specificationsJson = JSON.stringify(specifications, null, 2);
+    fs.writeFile(jsonFile, specificationsJson, err => {
+      if (err) {
+        res.sendStatus(500);
+        return;
+      }
+      // You could also respond with the database json to save a round trip
+      res.sendStatus(200);
+    });
+  });
+});
 
 app.get('/api/getAll', (req, res) => {
   let options = {

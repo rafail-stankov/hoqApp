@@ -90,3 +90,46 @@ canvas {
   -ms-writing-mode: vertical-rl;
   padding: 5px;
 }
+
+.specification{
+  height: 200px;
+  width: 45px;
+  padding: 0;
+}
+
+.sideway{
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+  float: left;
+  width: 45px;
+  height: 200px;
+}
+
+.sideway span {
+  vertical-align: top;
+  display: inline-block;
+  transform: translate(0, 200px) rotate(270deg);
+  transform-origin: 0 0;
+  width: 200px;
+  height: 45px;
+}
+input {
+  padding: 0;
+  color: silver;
+  background: none;
+  border: none;
+  line-height: 0.8em;
+  vertical-align: middle;
+  outline: none;
+  display: inline;
+}
+[type="text"] {
+  color: rgb(255, 127, 39);
+  height: 48px;
+  width: 100%;
+  text-align: center;
+}
+form {
+  overflow: hidden;
+}

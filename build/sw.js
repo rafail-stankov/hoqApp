@@ -21,7 +21,7 @@ if (workbox) {
   workbox.precaching.precacheAndRoute([
   {
     "url": "style/main.css",
-    "revision": "1ec699fecc00bdfdf9bed5ad0ba1bbb6"
+    "revision": "d6656331ba56f79b4dd74a1ca6c861e3"
   },
   {
     "url": "index.html",

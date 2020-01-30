@@ -19,11 +19,27 @@ window.onload = function() {
       }
       shortDescription = shortDescription.concat("..");
     }
+    var following = d.following ? "Yes" : "No";
+    var active = d.numberOfCategories == 0 ? "not-active" : "";
+    var created = isValidDate(creationDate) ? coolNumber(creationDate.getDate()) + "/" + coolNumber(creationDate.getMonth()) + "/" + creationDate.getFullYear() : "n/a";
+    var lastUpdated = isValidDate(lastUpdatedDate) ? coolNumber(lastUpdatedDate.getDate()) + "/" + coolNumber(lastUpdatedDate.getMonth()) + "/" + lastUpdatedDate.getFullYear() : "n/a";
     element = document.createElement("tr");
     document.getElementById("projectsTable").children[0].appendChild(element);
-    element.innerHTML = "<td><a href='https://requirements-bazaar.org/projects/" + d.id + "' target='_blank'>" + d.name + "</a></td><td title='" + d.description + "'>" + shortDescription + "</td><td>" + d.numberOfCategories + "</td><td>" + creationDate.getDate() + "/" + creationDate.getMonth() + "/" + creationDate.getFullYear() + "</td><td>" + lastUpdatedDate.getDate() + "/" + lastUpdatedDate.getMonth() + "/" + lastUpdatedDate.getFullYear() + "</td><td>" + d.numberOfFollowers + "</td><td>" + d.isFollower + "</td><td><a href='/categories?projectId=" + d.id + "'>To Categories</a></td>";
+    element.innerHTML = "<td><a href='https://requirements-bazaar.org/projects/" + d.id + "' target='_blank'>" + d.name + "</a></td><td title='" + d.description + "'>" + shortDescription + "</td><td>" + d.numberOfCategories + "</td><td>" + created + "</td><td>" + lastUpdated + "</td><td>" + d.numberOfFollowers + "</td><td>" + following + "</td><td><a class='" + active + "' href='/categories?projectId=" + d.id + "'>To Categories</a></td>";
   }
 
+}
+
+function isValidDate(d) {
+  console.log(d instanceof Date && !isNaN(d));
+  return d instanceof Date && !isNaN(d);
+}
+
+function coolNumber(n){
+  if(n < 10){
+    return "0" + n;
+  }
+  return n;
 }
 
 function getRequest(url) {

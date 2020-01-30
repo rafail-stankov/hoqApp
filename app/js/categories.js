@@ -1,9 +1,8 @@
 window.onload = function() {
 
   // get data
-  console.log(projectId);
   var data = getRequest('https://requirements-bazaar.org/bazaar/projects/'+ projectId + '/categories?per_page=15');
-  console.log(data);
+  document.getElementById("projectName").innerHTML = getProjectName(projectId);
   // append
   for(d of data){
     var creationDate = new Date(d.creationDate);
@@ -25,11 +24,35 @@ window.onload = function() {
     if(d.leader.userName != "Unassigned"){
       leaderName = d.leader.firstName + " " + d.leader.lastName;
     }
+    var active = d.numberOfRequirements == 0 ? "not-active" : "";
     element = document.createElement("tr");
     document.getElementById("projectsTable").children[0].appendChild(element);
-    element.innerHTML = "<td><a href='https://requirements-bazaar.org/projects/" + d.projectId + "/categories/" + d.id + "' target='_blank'>" + d.name + "</a></td><td title='" + d.description + "'>" + shortDescription + "</td><td>" + creationDate.getDate() + "/" + creationDate.getMonth() + "/" + creationDate.getFullYear() + "</td><td>" + lastUpdatedDate.getDate() + "/" + lastUpdatedDate.getMonth() + "/" + lastUpdatedDate.getFullYear() + "</td><td>" + d.numberOfFollowers + "</td><td>" + d.numberOfRequirements + "</td><td>" + leaderName +"</td><td><a href='/hoq?categoryId=" + d.id + "'>To House of Quality</a></td>";
+    var created = isValidDate(creationDate) ? coolNumber(creationDate.getDate()) + "/" + coolNumber(creationDate.getMonth()) + "/" + creationDate.getFullYear() : "n/a";
+    var lastUpdated = isValidDate(lastUpdatedDate) ? coolNumber(lastUpdatedDate.getDate()) + "/" + coolNumber(lastUpdatedDate.getMonth()) + "/" + lastUpdatedDate.getFullYear() : "n/a";
+    element.innerHTML = "<td><a href='https://requirements-bazaar.org/projects/" + d.projectId + "/categories/" + d.id + "' target='_blank'>" + d.name + "</a></td><td title='" + d.description + "'>" + shortDescription + "</td><td>" + created + "</td><td>" + lastUpdated + "</td><td>" + d.numberOfFollowers + "</td><td>" + d.numberOfRequirements + "</td><td>" + leaderName +"</td><td><a class='" + active + "' href='/hoq?categoryId=" + d.id + "'>To House of Quality</a></td>";
   }
 
+}
+
+function getProjectName(projectId){
+  var project = getRequest('https://requirements-bazaar.org/bazaar/projects/'+ projectId);
+  if(project){
+    return project.name;
+  } else {
+    return "There is no project with that id.";
+  }
+}
+
+
+function isValidDate(d) {
+  return d instanceof Date && !isNaN(d);
+}
+
+function coolNumber(n){
+  if(n < 10){
+    return "0" + n;
+  }
+  return n;
 }
 
 function getRequest(url) {

@@ -284,3 +284,10 @@ footer {
 .social-link {
   color: white;
 }
+
+.not-active {
+  pointer-events: none;
+  cursor: default;
+  text-decoration: none;
+  color: gray !important;
+}
