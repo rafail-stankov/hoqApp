@@ -14,13 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 const express = require('express');
+var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const app = express();
-
 app.set('view engine', 'jade');
 app.set('views', __dirname + '/build/views');
 
+const mongoose = require('mongoose');
+const specificationSchema = require('./specification-schema.js');
+const productSchema = require('./product-schema.js');
+const Specification = mongoose.model('specification', specificationSchema);
+const Product = mongoose.model('product', productSchema);
+mongoose.connect('mongodb+srv://bigBoss:test123@cluster0-4p8pc.mongodb.net/test?retryWrites=true&w=majority', {useNewUrlParser: true});
+
+var db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', function(){
+    console.log('connected');
+});
 // This serves static files from the specified directory
 app.use(express.static(__dirname + '/build'));
 
@@ -50,120 +62,158 @@ app.get(['/categories', '/categories.jade'], (req, res) => {
 // categories
 app.get(['/hoq', '/hoq.jade'], (req, res) => {
   if(req.query.categoryId){
-    res.render('HoQ', {categoryId: req.query.categoryId});
+    Product.find({categoryId: req.query.categoryId}, function(err, products){
+      if (err) return console.error(err);
+      if(products.length == 0){
+        for(var i = 0; i < 5; i++){
+          var product = new Product({
+            id: i,
+            name: "",
+            categoryId: req.query.categoryId,
+            abbreviation: "",
+            requirements: [],
+            created: Date.now()
+          });
+          requirements = getRequest('https://requirements-bazaar.org/bazaar/categories/' + req.query.categoryId + '/requirements?per_page=100&state=all');
+          for(j = 0; j < requirements.length; j++){
+            product.requirements.push({_id: requirements[j].id, value: 0});
+          }
+          product.save(function(err2){
+            if (err2) return console.error(err2);
+          });
+        }
+      }
+      res.render('HoQ', {categoryId: req.query.categoryId});
+    });
   } else {
     res.send("error");
   }
   // TODO: fix error message
 });
 
-// HoQ
-// app.get(['/hoq', '/HoQ.jade'], (req, res) => {
-//   console.log(req.query.id);
-//   res.render('HoQ', {hoqId: req.query.id});
-// });
-
-// read
+// read ts
 app.get('/api/tech-specifications', (req, res) => {
-  let jsonFile = __dirname + '/server-data/tech-specifications.json';
   if(req.query.categoryId){
-    fs.readFile(jsonFile, (err, data) => {
-      if (err) {
-        res.sendStatus(500);
-        return;
-      }
-      let specifications = JSON.parse(data);
-      var ans = new Array();
-      for(var i = 0; i < specifications.length; i++){
-        if(specifications[i].categoryId == req.query.categoryId){
-          ans.push(specifications[i]);
-        }
-      }
-      res.json(ans);
+    Specification.find({categoryId: req.query.categoryId}, function(err, specifications){
+      res.json(specifications);
     });
-  } else {
-    res.send("error");
   }
 });
 
-// create
+// create ts
 app.post('/api/tech-specifications', (req, res) => {
-  let jsonFile = __dirname + '/server-data/tech-specifications.json';
-  let newSpecification = req.body;
-  console.log('Adding new technical specification');
-  fs.readFile(jsonFile, (err, data) => {
-    if (err) {
-      res.sendStatus(500);
-      return;
-    }
-    let specifications = JSON.parse(data);
-    specifications.push(newSpecification);
-    let specificationsJson = JSON.stringify(specifications, null, 2);
-    fs.writeFile(jsonFile, specificationsJson, err => {
-      if (err) {
-        res.sendStatus(500);
-        return;
+  var newSpecification = req.body;
+  console.log("SAVE SINGLE");
+  var newSpec = new Specification({
+    name: newSpecification.name,
+    categoryId: newSpecification.categoryId,
+    minMax: newSpecification.minMax,
+    target: newSpecification.target,
+    requirements: newSpecification.requirements,
+    specifications: newSpecification.specifications,
+    created: Date.now()
+  });
+  newSpec.save(function (err) {
+    if (err) return console.error(err);
+    Specification.find({categoryId: newSpecification.categoryId}, function(err, specifications){
+      if(err) return console.error(err);
+      console.log("SAVE MANY (UPDATE)");
+      for(var i = 0; i < specifications.length; i++){
+        specifications[i].specifications.push({"_id": newSpec._id, "value": 0});
+        specifications[i].save(function (err2) {
+          if (err2) return console.error(err2);
+        });
       }
-      // You could also respond with the database json to save a round trip
-      res.sendStatus(200);
     });
+    res.json(newSpec._id);
   });
 });
 
-// update
+// update ts
 app.put('/api/tech-specifications', (req, res) => {
-  let jsonFile = __dirname + '/server-data/tech-specifications.json';
-  let updateSpecification = req.body;
-  console.log('Changing technical specification');
-  fs.readFile(jsonFile, (err, data) => {
-    if (err) {
+  var updateSpecification = req.body;
+  console.log("UPDATE SINGLE");
+  Specification.findById(updateSpecification._id, function(err, updateSpec){
+    if(err) return console.error(err);
+    if(updateSpec){
+      updateSpec.name = updateSpecification.name;
+      updateSpec.minMax = updateSpecification.minMax;
+      updateSpec.target = updateSpecification.target;
+      updateSpec.requirements = updateSpecification.requirements;
+      updateSpec.specifications = updateSpecification.specifications;
+      updateSpec.save(function (err2){
+        if(err2) return console.error(err2);
+        res.sendStatus(200);
+      });
+    } else {
       res.sendStatus(500);
       return;
     }
-    let specifications = JSON.parse(data);
-    for(var i = 0; i < specifications.length; i++){
-      if(specifications[i].id == updateSpecification.id){
-        specifications[i].name = updateSpecification.name;
-        specifications[i].requirements = updateSpecification.requirements;
-        specifications[i].specifications = updateSpecification.specifications;
-        console.log(specifications[i]);
-        // TODO: MORE DATA
-      }
-    }
-    let specificationsJson = JSON.stringify(specifications, null, 2);
-    fs.writeFile(jsonFile, specificationsJson, err => {
-      if (err) {
-        res.sendStatus(500);
-        return;
-      }
-      // You could also respond with the database json to save a round trip
-      res.sendStatus(200);
-    });
   });
 });
 
 // delete
 app.delete('/api/tech-specifications', (req, res) => {
-  let jsonFile = __dirname + '/server-data/tech-specifications.json';
-  let deleteSpecification = req.body;
-  console.log('Deleting new tech. specification');
-  fs.readFile(jsonFile, (err, data) => {
-    if (err) {
+  var deleteSpecification = req.body;
+  console.log("DELETE ONCE");
+  Specification.deleteOne({ _id: deleteSpecification._id }, function(err){
+    if(err) return console.error(err);
+    console.log("DELETE CHILDREN (UPDATE)");
+    Specification.find({}, function(err, specifications){
+      if(err) return console.error(err);
+      for(var i = 0; i < specifications.length; i++){
+        console.log(specifications.length);
+        var index = -1;
+        for(var j = 0; j < specifications[i].specifications.length; j++){
+          if(specifications[i].specifications[j]._id == deleteSpecification._id){
+            index = j;
+          }
+        }
+        if(index > -1){
+          console.log("Deleting " + specifications[i].specifications[index]);
+          specifications[i].specifications.splice(index, 1);
+        }
+        specifications[i].save(function (err2) {
+          if (err2) return console.error(err2);
+        });
+      }
+      res.sendStatus(200);
+    });
+  });
+});
+
+// read products
+app.get('/api/products', (req, res) => {
+  if(req.query.categoryId){
+    Product.find({categoryId: req.query.categoryId}, function(err, products){
+      res.json(products);
+    });
+  }
+});
+
+// update product
+app.put('/api/products', (req, res) => {
+  var updateProduct = req.body;
+  console.log("UPDATE SINGLE");
+  Product.findOne({categoryId: updateProduct.categoryId, id: updateProduct.id}, function(err, product){
+    if(err) return console.error(err);
+    if(product){
+      product.name = updateProduct.name;
+      if(updateProduct.name.length < 2){
+        product.abbreviation = updateProduct.name;
+      } else {
+        product.abbreviation = updateProduct.name.toUpperCase().substring(0, 1) + updateProduct.name.toLowerCase().substring(1, 2);
+      }
+      product.requirements = updateProduct.requirements;
+      product.specifications = updateProduct.specifications;
+      product.save(function (err2){
+        if(err2) return console.error(err2);
+        res.sendStatus(200);
+      });
+    } else {
       res.sendStatus(500);
       return;
     }
-    let specifications = JSON.parse(data);
-    let index = specifications.findIndex(specification => specification.id == deleteSpecification.id);
-    specifications.splice(index, 1);
-    let specificationsJson = JSON.stringify(specifications, null, 2);
-    fs.writeFile(jsonFile, specificationsJson, err => {
-      if (err) {
-        res.sendStatus(500);
-        return;
-      }
-      // You could also respond with the database json to save a round trip
-      res.sendStatus(200);
-    });
   });
 });
 
@@ -184,7 +234,7 @@ app.get('/api/getAll', (req, res) => {
 app.post('/api/add', (req, res) => {
   let jsonFile = __dirname + '/server-data/events.json';
   let newEvent = req.body;
-  console.log('Adding new event:', newEvent);
+  ('Adding new event:', newEvent);
   fs.readFile(jsonFile, (err, data) => {
     if (err) {
       res.sendStatus(500);
@@ -228,6 +278,16 @@ app.post('/api/delete', (req, res) => {
     });
   });
 });
+
+function getRequest(url) {
+  var xmlHttp = new XMLHttpRequest();
+  xmlHttp.open( "GET", url, false ); // false for synchronous request
+  xmlHttp.send( null );
+  // if(xmlHttp.status == 404){
+  //   return null;
+  // }
+  return JSON.parse(xmlHttp.responseText);
+}
 
 const server = app.listen(8081, () => {
 
